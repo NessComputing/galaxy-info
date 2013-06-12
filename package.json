@@ -1,0 +1,33 @@
+{
+  "name":"galaxy-info",
+  "version":"0.0.1",
+  "description": "A replacement galaxy-info utility",
+  "author": "Josh Toft <josh@likeness.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nesscomputing/galaxy-info.git"
+  },
+  "bin": { "galaxy-info": "./bin/galaxy-info" },
+  "dependencies": {
+    "winston": "0.7.1",
+    "winston-mixlib-log": "0.0.2",
+    "optimist": "0.5.0",
+    "nconf": "0.6.7",
+    "pkginfo": "0.3.0",
+    "express": "3.2.6",
+    "request": "2.21.0"
+
+  },
+  "devDependencies": {
+    "mocha": "1.10.0",
+    "chai": "1.6.0",
+    "coffee-script": "1.6.2",
+    "codo": "1.7.0"
+  },
+  "scripts": {
+    "pretest": "cake build",
+    "prepublish": "cake build",
+    "test": "cake -r dot test"
+  },
+  "main": "./lib/galaxy-info"
+}
