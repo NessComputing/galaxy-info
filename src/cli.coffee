@@ -11,9 +11,9 @@ class CLI
     @argv = optimist
       .usage("Usage: " + exports.name)
 
-      # configuration
+      # monitoring configuration
       .alias('c', 'config')
-      .describe('c', 'The configuration file to use')
+      .describe('c', 'The monitoring configuration file to use')
       .default('c', "/etc/galaxy-info.json")
 
       # logging
