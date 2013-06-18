@@ -70,7 +70,6 @@ class GalaxyInfo
       @monitoring_lookups = @configuration.services
       @jmx_lookups = JSON.parse(
         fs.readFileSync(@configuration.mapping).toString())
-        )
     catch error
       @monitoring_lookups = {}
       @jmx_lookups = {}
@@ -87,8 +86,9 @@ class GalaxyInfo
   ###
   http_clients: =>
     @agents
-    .filter((agent) -> agent.type != null)
-    .map (agent) -> agent.id
+    .filter((agent) ->
+      agent.type != null and @http_clients[agent.formal_type] == 'http'
+    ).map (agent) -> agent.id
 
   ###
   The list of jmx supported clients.
@@ -98,8 +98,8 @@ class GalaxyInfo
     .filter((agent) ->
       agent.type != null and not (
         @jmx_clients[agent.formal_type] == null or
-        @jmx_clients[agent.format_type] == undefined)
-    .map (agent) -> agent.id
+        @jmx_clients[agent.formal_type] == undefined)
+    ).map (agent) -> agent.id
 
   ###
   Updates the current jolosrv client list with the existing agents.
@@ -109,7 +109,12 @@ class GalaxyInfo
     timeout: 5000, (error, response, body) =>
       if error then logger.error error
       else
-        _.difference(@jmx_clients(), body.clients)
-        _.difference(body.clients, @jmx_clients())
+        clients_to_add = _.difference(@jmx_clients(), body.clients)
+        clients_to_delete = _.difference(body.clients, @jmx_clients())
+
+  delete_jolokia_client: (client) =>
+
+  add_jolokia_client: (client) =>
+
 
 module.exports = GalaxyInfo
