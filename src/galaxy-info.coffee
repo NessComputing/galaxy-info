@@ -111,7 +111,8 @@ class GalaxyInfo
   @todo Finish register_http services and healthchecks
   ###
   register_http_services: =>
-
+    clients_to_add = _.difference(@http_clients(), body.clients)
+    clients_to_delete = _.difference(body.clients, @http_clients())
 
   ###
   The list of jmx supported clients.
