@@ -6,6 +6,7 @@ config = require 'nconf'
 logger = require './logger'
 request = require 'request'
 _ = require 'lodash'
+async = require 'async'
 
 ###
 The Galaxy Info cache.
@@ -16,7 +17,7 @@ class GalaxyInfo
     @health = {}
 
     @configuration = {}
-    @monitoring_lookups = {}
+    @http_lookups = {}
     @jmx_lookups = {}
 
     @has_service = false
@@ -33,6 +34,7 @@ class GalaxyInfo
     exec 'which galaxy', (err, stdout, stderr) =>
       if err then logger.warn warning
       else
+        @update_galaxyinfo()
         @has_service = true
         @update_timer = setInterval () =>
           @update_galaxyinfo()
@@ -49,6 +51,7 @@ class GalaxyInfo
         try
           @agents = JSON.parse(stdout).agents
           @register_jolosrv_services()
+          @register_http_services()
         catch error
           logger.warn "Unable to parse galaxy show-json output"
 
@@ -56,10 +59,13 @@ class GalaxyInfo
   Clears the slot info and reloads config.
   ###
   clear: =>
+    clearInterval(@update_timer)
     @update_timer = null
     @agents = []
+    @health = {}
     @reload_configuration()
     @update_galaxyinfo()
+    @initialize_updater()
 
   ###
   Reads the galaxy-info configuration file and sets up svc mappings.
@@ -68,7 +74,7 @@ class GalaxyInfo
     try
       @configuration = JSON.parse(
         fs.readFileSync(config.get('config')).toString())
-      @monitoring_lookups = @configuration.services
+      @http_lookups = @configuration.services
       @jmx_lookups = JSON.parse(
         fs.readFileSync(@configuration.mapping).toString())
     catch error
@@ -82,7 +88,7 @@ class GalaxyInfo
   @return {Object} The matched up agent info
   ###
   agent_info: (agent) =>
-    (@agents.filter (agent) -> agent.id == agent).pop()
+    @agents.filter (a) -> a.id == agent
 
   ###
   The list of client id's.
@@ -98,8 +104,14 @@ class GalaxyInfo
   http_clients: =>
     @agents
     .filter((agent) ->
-      agent.type != null and @http_clients[agent.formal_type] == 'http'
+      agent.type != null and @http_lookups[agent.formal_type] == 'http'
     ).map (agent) -> agent.id
+
+  ###
+  @todo Finish register_http services and healthchecks
+  ###
+  register_http_services: =>
+
 
   ###
   The list of jmx supported clients.
@@ -125,10 +137,10 @@ class GalaxyInfo
         clients_to_delete = _.difference(body.clients, @jmx_clients())
 
         if clients_to_add.length > 0
-          async.each clients_to_add, add_jolokia_client, (error) ->
+          async.each clients_to_add, @add_jolokia_client, (error) ->
             logger.error error
         if clients_to_delete.length > 0
-          async.each clients_to_delete, delete_jolokia_client, (error) ->
+          async.each clients_to_delete, @delete_jolokia_client, (error) ->
             logger.error error
 
   ###
@@ -137,7 +149,6 @@ class GalaxyInfo
   @param {Function} fn The callback function
   ###
   delete_jolokia_client: (client, fn) =>
-    console.log "deleting client: #{client}"
     request.del "#{@j_url}/clients/#{client}", json: true,
     timeout: 2000, (error, response, body) =>
       return fn(error, body)
@@ -148,8 +159,7 @@ class GalaxyInfo
   @param {Function} fn The callback function
   ###
   add_jolokia_client: (client, fn) =>
-    console.log "adding client: #{client}"
-    agent = @agent_info(client)
+    agent = @agent_info(client).shift()
     if agent == undefined
       return fn(true, "Agent `#{client}` could not be found")
 
