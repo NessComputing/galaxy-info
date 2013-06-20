@@ -136,28 +136,29 @@ class GalaxyInfo
     astate = ainfo.status
     hstate = @health[agent]?.status
     hmessage = @health[agent]?.message
+    type = if ainfo.type then ainfo.type else ainfo.id
 
     if astate == "stopped"
       return fn(null,
         state: "ERROR"
-        message: "#{ainfo.type} is stopped")
+        message: "#{type} is stopped")
 
     if astate == "running"
       if hstate == "OK" or hstate == undefined or hstate == null
         message = hmessage || "is OK"
         return fn(null,
           state: if hstate then hstate.toUpperCase() else "OK"
-          message: "#{ainfo.type} #{message}")
+          message: "#{type} #{message}")
       else
         message = hmessage || "is throwing #{hstate.toUpperCase()}'s"
         return fn(null,
           state: if hstate then hstate.toUpperCase() else "ERROR"
-          message: "#{ainfo.type} #{message}")
+          message: "#{type} #{message}")
     else
       message = hmessage || "is OK"
       return fn(null,
         state: if hstate then hstate.toUpperCase() else "OK"
-        message: "#{ainfo.type} #{message}")
+        message: "#{type} #{message}")
 
   ###
   The list of jmx supported clients.
