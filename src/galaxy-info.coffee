@@ -34,8 +34,10 @@ class GalaxyInfo
     exec 'which galaxy', (err, stdout, stderr) =>
       if err then logger.warn warning
       else
-        @update_galaxyinfo()
         @has_service = true
+        setTimeout () =>
+          @update_galaxyinfo()
+        , 100
         @update_timer = setInterval () =>
           @update_galaxyinfo()
         , 15000
@@ -53,7 +55,7 @@ class GalaxyInfo
           @register_jolosrv_services()
           @register_http_services()
         catch error
-          logger.warn "Unable to parse galaxy show-json output"
+          logger.warn "Unable to parse galaxy show-json output: #{error}"
 
   ###
   Clears the slot info and reloads config.
@@ -64,7 +66,6 @@ class GalaxyInfo
     @agents = []
     @health = {}
     @reload_configuration()
-    @update_galaxyinfo()
     @initialize_updater()
 
   ###
@@ -103,16 +104,60 @@ class GalaxyInfo
   ###
   http_clients: =>
     @agents
-    .filter((agent) ->
+    .filter((agent) =>
       agent.type != null and @http_lookups[agent.formal_type] == 'http'
     ).map (agent) -> agent.id
 
   ###
-  @todo Finish register_http services and healthchecks
+  Registes
   ###
   register_http_services: =>
-    clients_to_add = _.difference(@http_clients(), body.clients)
-    clients_to_delete = _.difference(body.clients, @http_clients())
+    clients_to_add = _.difference(@http_clients(), Object.keys(@health))
+    clients_to_delete = _.difference(Object.keys(@health), @http_clients())
+    delete @health[d] for d in clients_to_delete
+    @health[d] = 'unknown' for d in clients_to_add
+
+  ###
+  Returns the selfcheck status for a given agent.
+  @param {String} agent The name of the agent to retrieve status for
+  @param {Function} fn The callback function
+  ###
+  status: (agent=null, fn) =>
+    # if agent == null
+    #   async.map Object.keys(@agents), @single_status, fn
+    # else
+    @single_status(agent, fn)
+
+  ###
+  Returns a selfcheck status for a single agent.
+  ###
+  single_status: (agent, fn) =>
+    ainfo = @agent_info(agent).shift() || {}
+    astate = ainfo.status
+    hstate = @health[agent]?.status
+    hmessage = @health[agent]?.message
+
+    if astate == "stopped"
+      return fn(null,
+        state: "ERROR"
+        message: "#{ainfo.type} is stopped")
+
+    if astate == "running"
+      if hstate == "OK" or hstate == undefined or hstate == null
+        message = hmessage || "is OK"
+        return fn(null,
+          state: if hstate then hstate.toUpperCase() else "OK"
+          message: "#{ainfo.type} #{message}")
+      else
+        message = hmessage || "is throwing #{hstate.toUpperCase()}'s"
+        return fn(null,
+          state: if hstate then hstate.toUpperCase() else "ERROR"
+          message: "#{ainfo.type} #{message}")
+    else
+      message = hmessage || "is OK"
+      return fn(null,
+        state: if hstate then hstate.toUpperCase() else "OK"
+        message: "#{ainfo.type} #{message}")
 
   ###
   The list of jmx supported clients.

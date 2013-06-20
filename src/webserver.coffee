@@ -20,7 +20,7 @@ class WebServer
     @app.use(express.bodyParser())
     @app.use(express.favicon())
     @app.use(@app.router)
-    @app.use(errorHandler)
+    # @app.use(errorHandler)
     @app.locals.gi = new GalaxyInfo()
 
     @setup_routing()
@@ -36,6 +36,7 @@ class WebServer
     @app.get '/clear', routes.galaxy.clear
     @app.get '/show', routes.galaxy.showall
     @app.get '/show/:slot', routes.galaxy.show
+    @app.get '/status', routes.galaxy.statusall
     @app.get '/status/:slot', routes.galaxy.status
 
     @app.post '/update', routes.galaxy.update
